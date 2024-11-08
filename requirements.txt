@@ -1,1 +1,11 @@
 streamlit
+langchain
+faiss-cpu
+sentence-transformers
+duckduckgo-search
+arxiv
+pymupdf
+langgraph
+transformers
+torch
+tqdm
