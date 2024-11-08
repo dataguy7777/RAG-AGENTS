@@ -7,7 +7,6 @@ from typing import List, Dict, Any
 
 import arxiv
 import faiss
-import streamlit as st
 import pymupdf  # For PDF text extraction
 from sentence_transformers import SentenceTransformer
 from langchain.prompts import ChatPromptTemplate
@@ -63,12 +62,18 @@ def load_documents(query: str, max_docs: int = 5) -> List[Dict[str, Any]]:
                 f.write(pdf_response.read())
             
             # Extract text from PDF
+            content = extract_text_from_pdf(pdf_path)
+            if not content.strip():
+                logger.warning(f"No content extracted from {pdf_path}. Skipping document.")
+                os.remove(pdf_path)
+                continue
+
             doc = {
                 'title': result.title,
                 'summary': result.summary,
                 'authors': [author.name for author in result.authors],
                 'published': result.published.strftime('%Y-%m-%d'),
-                'content': extract_text_from_pdf(pdf_path)
+                'content': content
             }
             documents.append(doc)
             logger.info(f"Loaded document: {doc['title']}")
@@ -163,7 +168,7 @@ Context:
     logger.info("RAG prompt template defined.")
     return prompt
 
-def build_rag_chain(vector_store: LangchainFAISS, prompt: ChatPromptTemplate, model_name: str = 'gpt-2') -> LLMChain:
+def build_rag_chain(vector_store: LangchainFAISS, prompt: ChatPromptTemplate, model_name: str = 'gpt-3.5-turbo') -> LLMChain:
     """
     Builds the Retrieval-Augmented Generation (RAG) chain.
 
@@ -176,13 +181,13 @@ def build_rag_chain(vector_store: LangchainFAISS, prompt: ChatPromptTemplate, mo
         LLMChain: The RAG chain.
 
     Example:
-        >>> rag_chain = build_rag_chain(vector_store, prompt, "gpt-2")
+        >>> rag_chain = build_rag_chain(vector_store, prompt, "gpt-3.5-turbo")
         >>> isinstance(rag_chain, LLMChain)
         True
     """
     logger.info("Building the RAG chain.")
-    # Initialize the language model (Using GPT-2 as a placeholder)
-    llm = ChatOpenAI(model="gpt-2")  # Replace with an actual open-source LLM if available
+    # Initialize the language model
+    llm = ChatOpenAI(model=model_name, temperature=0)
     
     # Create the chain
     chain = LLMChain(llm=llm, prompt=prompt)
@@ -213,8 +218,8 @@ def setup_langgraph(vector_store: LangchainFAISS) -> Any:
     ]
     tool_executor = ToolExecutor(tools)
     
-    # Initialize the language model (Using GPT-2 as a placeholder)
-    llm = ChatOpenAI(model="gpt-2")  # Replace with an actual open-source LLM if available
+    # Initialize the language model
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
     
     # Define functions based on tools
     functions = [tool.to_function() for tool in tools]
